@@ -3,6 +3,7 @@ module Form.Questions.Types exposing (Angle, BracketState(..), Model, QState, Qu
 import Bets.Bet
 import Bets.Types exposing (AnswerID, Bet, Candidate, Slot)
 import Bets.Types.Answer
+import Lib.Cyclic exposing (Cyclic)
 
 
 type alias QState =
@@ -20,9 +21,13 @@ type alias Angle =
     Float
 
 
+type alias Slots =
+    Cyclic ( Slot, Candidate )
+
+
 type BracketState
     = ShowMatches
-    | ShowSecondRoundSelection Slot Candidate Angle Angle
+    | ShowCandidates Slots Angle Angle
 
 
 type QuestionType

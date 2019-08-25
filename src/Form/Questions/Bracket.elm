@@ -2,12 +2,14 @@ module Form.Questions.Bracket exposing (Msg, update, view)
 
 import Basics.Extra exposing (inDegrees)
 import Bets.Bet
+import Bets.Init.Euro2020.Tournament as Tournament
 import Bets.Types exposing (Answer, AnswerID, AnswerT(..), Bet, Bracket(..), Candidate(..), CurrentSlot(..), HasQualified(..), Qualifier, Selection, Slot, Team, Winner(..))
 import Bets.Types.Bracket as B
 import Bets.Types.Group as G
 import Bets.Types.Team as T
 import Element exposing (centerX, height, px, width)
 import Form.Questions.Types exposing (Angle, BracketState(..), QState, QuestionType(..))
+import Lib.Cyclic as Cyclic
 import List.Extra as Extra
 import Svg exposing (Svg)
 import Svg.Attributes as Attributes
@@ -19,7 +21,7 @@ import UI.Text
 
 type Msg
     = SetWinner AnswerID Slot Winner
-    | SetQualifier AnswerID Slot Candidate Angle Angle
+    | SetQualifier AnswerID Slot Angle Angle
     | SetSlot Slot Team
     | CloseQualifierView
 
@@ -28,26 +30,6 @@ type IsWinner
     = Yes
     | No
     | Undecided
-
-
-slots =
-    [ "WA"
-    , "WB"
-    , "WC"
-    , "WD"
-    , "WE"
-    , "WF"
-    , "RA"
-    , "RB"
-    , "RC"
-    , "RD"
-    , "RE"
-    , "RF"
-    , "T1"
-    , "T2"
-    , "T3"
-    , "T4"
-    ]
 
 
 isWinner : Winner -> Winner -> IsWinner
@@ -82,10 +64,24 @@ update msg bet qState =
             in
             ( newBet, { qState | next = Nothing }, Cmd.none )
 
-        SetQualifier answerId slot candidates startAngle endAngle ->
+        SetQualifier answerId slot startAngle endAngle ->
             let
+                slts_ =
+                    Cyclic.fromList Tournament.slots
+
+                eq ( s1, c1 ) ( s2, c2 ) =
+                    s1 == s2
+
+                sameSlot : ( Slot, Candidate ) -> Bool
+                sameSlot =
+                    eq ( slot, FirstPlace Bets.Types.A )
+
+                slts =
+                    Cyclic.moveTo slts_ sameSlot
+                        |> Maybe.withDefault slts_
+
                 bracketState =
-                    ShowSecondRoundSelection slot candidates startAngle endAngle
+                    ShowCandidates slts startAngle endAngle
 
                 newQState =
                     { qState | questionType = QBracket bracketState }
@@ -97,6 +93,15 @@ update msg bet qState =
                 mAnswer =
                     Bets.Bet.getAnswer bet "br"
 
+                newQuestionType =
+                    case qState.questionType of
+                        QBracket (ShowCandidates slts angle1 angle2) ->
+                            QBracket (ShowCandidates (Debug.log "slots" (Cyclic.cycle slts)) angle1 angle2)
+
+                        _ ->
+                            -- huh - should not take place
+                            qState.questionType
+
                 newBet =
                     case mAnswer of
                         Just answer ->
@@ -105,7 +110,7 @@ update msg bet qState =
                         Nothing ->
                             bet
             in
-            ( newBet, { qState | next = Nothing }, Cmd.none )
+            ( newBet, { qState | next = Nothing, questionType = newQuestionType }, Cmd.none )
 
         CloseQualifierView ->
             let
@@ -153,8 +158,8 @@ viewRings bet answer bracket questionType =
     let
         slotSelected =
             case questionType of
-                QBracket (ShowSecondRoundSelection slot _ _ _) ->
-                    Just slot
+                QBracket (ShowCandidates slts _ _) ->
+                    Cyclic.current slts |> Maybe.map Tuple.first
 
                 _ ->
                     Nothing
@@ -167,8 +172,13 @@ viewRings bet answer bracket questionType =
                 QBracket ShowMatches ->
                     viewMatchRings bet answer bracket
 
-                QBracket (ShowSecondRoundSelection slot secondRoundCandidate startAngle endAngle) ->
-                    viewCandidatesCircle bet answer bracket slot secondRoundCandidate startAngle endAngle
+                QBracket (ShowCandidates slts startAngle endAngle) ->
+                    case Cyclic.current slts of
+                        Just ( slot, candidate ) ->
+                            viewCandidatesCircle bet answer bracket slot candidate startAngle endAngle
+
+                        Nothing ->
+                            []
 
                 _ ->
                     []
@@ -682,14 +692,6 @@ mkText str clr (( x1, y1 ) as start) (( x2, y2 ) as end) =
         ]
 
 
-
--- viewMatchRing : Bet -> Answer -> (Maybe Bracket) -> Float -> Float ->List (Svg Msg)
--- viewMatchRing bet answer  matches segmentAngleSize segmentAngleSize  =
---     let
---     in
---         List.concatMap (uncurry (viewRingMatch bet answer ring segmentAngleSize)) matchesAndAngles
-
-
 viewLeaf : Bet -> Answer -> Maybe Bracket -> UI.Style.ButtonSemantics -> Float -> Float -> Float -> Svg Msg
 viewLeaf bet answer mBracket isSelected ring segmentAngleSize angle =
     case mBracket of
@@ -735,14 +737,10 @@ viewLeaf bet answer mBracket isSelected ring segmentAngleSize angle =
                     Leaf ring angle endAngle "#ececec" QualifierLeaf slot
 
                 msg =
-                    SetQualifier (Tuple.first answer) slot candidate angle endAngle
+                    SetQualifier (Tuple.first answer) slot angle endAngle
             in
             mkLeaf isSelected qualifier leaf msg
 
-        -- List.concat
-        --     [ viewCandidateLeaf answer slot isSelected candidate qualifier hasQualified leaf msg
-        --     ]
-        --     |> Svg.g [ Events.onClick msg ]
         _ ->
             Svg.g [] []
 

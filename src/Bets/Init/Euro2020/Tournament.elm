@@ -33,6 +33,7 @@ module Bets.Init.Euro2020.Tournament exposing
     , por
     , rome
     , rus
+    , slots
     , srb
     , sui
     , swe
@@ -200,6 +201,26 @@ swe =
 
 kor =
     team "KOR" "Zuid-Korea"
+
+
+slots =
+    [ ( "WA", FirstPlace A )
+    , ( "WB", FirstPlace B )
+    , ( "WC", FirstPlace C )
+    , ( "WD", FirstPlace D )
+    , ( "WE", FirstPlace E )
+    , ( "WF", FirstPlace F )
+    , ( "RA", SecondPlace A )
+    , ( "RB", SecondPlace B )
+    , ( "RC", SecondPlace C )
+    , ( "RD", SecondPlace D )
+    , ( "RE", SecondPlace E )
+    , ( "RF", SecondPlace F )
+    , ( "T1", BestThirdFrom [ A, B, C ] )
+    , ( "T2", BestThirdFrom [ A, B, C, D ] )
+    , ( "T3", BestThirdFrom [ A, D, E, F ] )
+    , ( "T4", BestThirdFrom [ D, E, F ] )
+    ]
 
 
 bracket : Bracket
