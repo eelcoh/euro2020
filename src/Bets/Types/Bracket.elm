@@ -6,6 +6,7 @@ module Bets.Types.Bracket exposing
     , encode
     , get
     , getQualifiers
+    , getSlotsAndCandidates
     , isComplete
     , proceed
     , proceedAway
@@ -274,6 +275,16 @@ candidatesForTeamNode brkt position slot =
                     Selection NoSlot g t
     in
     List.map assess candidates
+
+
+getSlotsAndCandidates : Bracket -> List ( Slot, Candidate )
+getSlotsAndCandidates bracket =
+    case bracket of
+        MatchNode _ _ home away _ _ ->
+            List.concatMap getSlotsAndCandidates [ home, away ]
+
+        TeamNode slot candidate _ _ ->
+            [ ( slot, candidate ) ]
 
 
 

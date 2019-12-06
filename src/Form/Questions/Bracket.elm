@@ -4,6 +4,7 @@ import Basics.Extra exposing (inDegrees)
 import Bets.Bet
 import Bets.Init.Euro2020.Tournament as Tournament
 import Bets.Types exposing (Answer, AnswerID, AnswerT(..), Bet, Bracket(..), Candidate(..), CurrentSlot(..), HasQualified(..), Qualifier, Selection, Slot, Team, Winner(..))
+import Bets.Types.Answer as Answer
 import Bets.Types.Bracket as B
 import Bets.Types.Group as G
 import Bets.Types.Team as T
@@ -67,13 +68,20 @@ update msg bet qState =
         SetQualifier answerId slot startAngle endAngle ->
             let
                 slts_ =
-                    Cyclic.fromList Tournament.slots
+                    Bets.Bet.getAnswer bet answerId
+                        |> Maybe.andThen Answer.getBracket
+                        |> Maybe.map B.getSlotsAndCandidates
+                        |> Maybe.withDefault []
+                        -- should not happen
+                        |> Cyclic.fromList
 
-                eq ( s1, c1 ) ( s2, c2 ) =
+                eq ( s1, _ ) ( s2, _ ) =
                     s1 == s2
 
                 sameSlot : ( Slot, Candidate ) -> Bool
                 sameSlot =
+                    -- a bit of a hack. we get a (slot, candidate) tuple,
+                    -- but are only interested in the slot
                     eq ( slot, FirstPlace Bets.Types.A )
 
                 slts =
@@ -96,7 +104,7 @@ update msg bet qState =
                 newQuestionType =
                     case qState.questionType of
                         QBracket (ShowCandidates slts angle1 angle2) ->
-                            QBracket (ShowCandidates (Debug.log "slots" (Cyclic.cycle slts)) angle1 angle2)
+                            QBracket (ShowCandidates (Cyclic.cycle slts) angle1 angle2)
 
                         _ ->
                             -- huh - should not take place
@@ -105,7 +113,7 @@ update msg bet qState =
                 newBet =
                     case mAnswer of
                         Just answer ->
-                            Bets.Bet.setQualifier bet answer (Debug.log "set" slot) (Just team)
+                            Bets.Bet.setQualifier bet answer slot (Just team)
 
                         Nothing ->
                             bet
@@ -170,7 +178,8 @@ viewRings bet answer bracket questionType =
         center =
             case questionType of
                 QBracket ShowMatches ->
-                    viewMatchRings bet answer bracket
+                    -- viewMatchRings bet answer bracket
+                    [ createRingForBracket answer Nothing 1 0 360 bracket ]
 
                 QBracket (ShowCandidates slts startAngle endAngle) ->
                     case Cyclic.current slts of
@@ -383,16 +392,14 @@ viewMatchRings bet answer bracket =
             , ring3
             , ring2
             , ring1
-            , viewChampion bet answer bracket
+            , viewChampion answer bracket
             ]
     in
     rings
 
 
-viewChampion bet answer bracket =
-    case
-        B.qualifier bracket
-    of
+viewChampion answer bracket =
+    case B.qualifier bracket of
         Just team ->
             let
                 radius =
@@ -581,7 +588,7 @@ mkQualifierButton msg teamID currentSlot row col =
                 |> toFloat
 
         semantics =
-            case Debug.log "current slot" currentSlot of
+            case currentSlot of
                 ThisSlot ->
                     UI.Style.Selected
 
@@ -607,7 +614,7 @@ mkButton x y w h caption msg semantics =
             String.join "-" [ "p", String.fromInt (round x), String.fromInt (round y) ]
 
         ( stroke, fill, txt ) =
-            case Debug.log "current slot" semantics of
+            case semantics of
                 UI.Style.Selected ->
                     ( "white", config.colorSelected, "white" )
 
@@ -711,14 +718,6 @@ viewLeaf bet answer mBracket isSelected ring segmentAngleSize angle =
 
                 awayLeaf =
                     Leaf ring awayStartAngle awayEndAngle "#ececec" AwayLeaf slot
-
-                -- dash =
-                --     text " - "
-                -- moveOut =
-                --     if round ring < 2 then
-                --         moveDiagonal2 ring (Debug.log "center angle" centerMatchAngle) 0
-                --     else
-                --         moveDiagonal2 ring (Debug.log "center angle" centerMatchAngle) 2
             in
             Svg.g []
                 [ viewMatchLeaf answer HomeTeam slot (isWinner winner HomeTeam) home homeLeaf
@@ -1031,9 +1030,6 @@ describeLeaf s ({ ring, startAngle, endAngle, clr, leafType } as leaf) =
 
                 _ ->
                     config.colorPotential
-
-        -- logging =
-        --     Debug.log "leaf: " (leafToString leaf)
     in
     Svg.path
         [ Attributes.d <|
@@ -1195,3 +1191,67 @@ translate x y =
         , ")"
         ]
         |> Attributes.transform
+
+
+createRingForBracket : Answer -> Maybe Slot -> Float -> Angle -> Angle -> Bracket -> Svg Msg
+createRingForBracket answer mSlot ring angleStart angleEnd bracket =
+    let
+        isSelected s =
+            Maybe.map (isSelected_ s) mSlot
+                |> Maybe.withDefault UI.Style.Potential
+
+        isSelected_ s1 s2 =
+            if s1 == s2 then
+                UI.Style.Selected
+
+            else
+                UI.Style.Potential
+    in
+    case bracket of
+        MatchNode slot winner home away rd _ ->
+            let
+                segmentAngleSize =
+                    (angleEnd - angleStart) / 2
+
+                awayStartAngle =
+                    angleStart + segmentAngleSize
+
+                db =
+                    Debug.log "angleSize" (round segmentAngleSize)
+
+                centerMatchAngle =
+                    awayStartAngle
+
+                homeLeaf =
+                    Leaf ring angleStart awayStartAngle "#ececec" HomeLeaf slot
+
+                awayLeaf =
+                    Leaf ring awayStartAngle angleEnd "#ececec" AwayLeaf slot
+
+                allRings =
+                    [ viewMatchLeaf answer HomeTeam slot (isWinner winner HomeTeam) home homeLeaf
+                    , viewMatchLeaf answer AwayTeam slot (isWinner winner AwayTeam) away awayLeaf
+                    , createRingForBracket answer mSlot (ring + 1) angleStart awayStartAngle (Debug.log "home" home)
+                    , createRingForBracket answer mSlot (ring + 1) awayStartAngle angleEnd away
+                    ]
+            in
+            if Debug.log "ring ring" ring == 1 then
+                Svg.g []
+                    (viewChampion answer bracket :: allRings)
+
+            else
+                Svg.g []
+                    allRings
+
+        TeamNode slot candidate qualifier hasQualified ->
+            let
+                centerAngle =
+                    (angleStart + angleEnd) / 2
+
+                leaf =
+                    Leaf ring angleStart angleEnd "#ececec" QualifierLeaf slot
+
+                msg =
+                    SetQualifier (Tuple.first answer) slot angleStart angleEnd
+            in
+            mkLeaf (isSelected slot) qualifier leaf msg

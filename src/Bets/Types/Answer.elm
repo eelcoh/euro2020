@@ -2,12 +2,13 @@ module Bets.Types.Answer exposing
     ( decode
     , encode
     , encodeAnswer
+    , getBracket
     , isComplete
     , summary
     )
 
 import Bets.Json.Encode exposing (mStrEnc)
-import Bets.Types exposing (Answer, AnswerID, AnswerT(..))
+import Bets.Types exposing (Answer, AnswerID, AnswerT(..), Bracket)
 import Bets.Types.Bracket
 import Bets.Types.Candidate
 import Bets.Types.Draw
@@ -54,6 +55,16 @@ summary ( answerId, answer ) =
 
         AnswerParticipant participant ->
             "Over jou"
+
+
+getBracket : Answer -> Maybe Bracket
+getBracket ( _, answer ) =
+    case answer of
+        AnswerBracket bracket points ->
+            Just bracket
+
+        _ ->
+            Nothing
 
 
 encodeAnswer : Answer -> ( AnswerID, Json.Encode.Value )
