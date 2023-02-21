@@ -47,6 +47,7 @@ import Form.Topscorer.Types as Topscorer
 import Html exposing (Html, div)
 import RemoteData exposing (RemoteData(..), WebData)
 import Time
+import UI.Button exposing (Size(..))
 import UI.Screen as Screen
 import Url
 
@@ -56,6 +57,7 @@ type App
     | Blog
     | Form
     | Login
+    | Logoff
     | Bets
     | Ranking
     | RankingDetailsView
@@ -70,6 +72,7 @@ type alias Flags =
     { formId : Maybe String
     , width : Int
     , height : Int
+    , token : Maybe String
     }
 
 
@@ -107,8 +110,17 @@ type InputState
     | Dirty
 
 
-init : Maybe String -> Screen.Size -> Navigation.Key -> Model Msg
-init formId sz navKey =
+init : Maybe String -> Screen.Size -> Navigation.Key -> Maybe String -> Model Msg
+init formId sz navKey tokenStr =
+    let
+        token =
+            case tokenStr of
+                Nothing ->
+                    NotAsked
+
+                Just t ->
+                    Success (Token t)
+    in
     { cards = initCards sz
     , bet = Bets.Init.bet
     , savedBet = NotAsked
@@ -119,7 +131,7 @@ init formId sz navKey =
     , screen = sz
     , activities = activitiesInit
     , app = Home
-    , token = NotAsked
+    , token = token
     , credentials = Empty
     , bets = NotAsked
     , ranking = NotAsked
@@ -202,6 +214,7 @@ type Msg
     | SetUsername String
     | SetPassword String
     | Authenticate
+    | Logout
       -- Bets
     | FetchBets
     | FetchedBets (WebData Bets)

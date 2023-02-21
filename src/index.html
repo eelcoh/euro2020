@@ -24,14 +24,30 @@
 </body>
 
 <script type="text/javascript">
+  storage = window.localStorage;
+
   var app = Elm.Main.init({
     flags:
     {
       formId: null
       , width: window.innerWidth
       , height: window.innerHeight
+      , token: storage.getItem('token')
     }
   });
+
+  app.ports.storeToken.subscribe(function (token) {
+    storage.setItem('token', token);
+  });
+
+  app.ports.removeToken.subscribe(function () {
+    storage.removeItem('token');
+  });
+
+
+
+
+
 </script>
 
 </html>

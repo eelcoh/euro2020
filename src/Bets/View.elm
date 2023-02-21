@@ -1,6 +1,7 @@
 module Bets.View exposing (view, viewBet)
 
 import Bets.Types exposing (..)
+import Bets.Types.Answers as Answers
 import Bets.Types.Bracket as B
 import Bets.Types.Score as S
 import Bets.Types.StringField as StringField
@@ -50,18 +51,35 @@ viewBet bet screenSize =
 
         device =
             Screen.device screenSize
+
+        pointsForAnswer mPts =
+            Maybe.map String.fromInt mPts
+                |> Maybe.map (\p -> " (" ++ p ++ " punten)")
+                |> Maybe.withDefault ""
+
+        matchesTotal =
+            List.filterMap (Tuple.second >> Answers.points) bet.answers.matches
+                |> List.sum
+                |> Just
+                |> pointsForAnswer
+
+        bracketTotal =
+            pointsForAnswer <| Answers.points bet.answers.bracket
+
+        topscorerTotal =
+            pointsForAnswer <| Answers.points bet.answers.topscorer
     in
     Element.column
         [ spacing 40, w ]
         [ displayParticipant bet.participant
-        , UI.Text.displayHeader "De wedstrijden"
-        , matchesIntro
-        , displayMatches bet.answers.matches
-        , UI.Text.displayHeader "Het Schema"
-        , displayBracket screenSize bet
-        , UI.Text.displayHeader "De Topscorer"
-        , topscorerIntro
+        , UI.Text.displayHeader ("De Topscorer" ++ topscorerTotal)
         , displayTopscorer bet.answers.topscorer
+        , topscorerIntro
+        , UI.Text.displayHeader ("Het Schema" ++ bracketTotal)
+        , displayBracket screenSize bet
+        , UI.Text.displayHeader ("De wedstrijden" ++ matchesTotal)
+        , displayMatches bet.answers.matches
+        , matchesIntro
         ]
 
 
@@ -143,8 +161,8 @@ displayBracket screen bet =
     in
     Element.column
         [ spacing 20 ]
-        [ introduction
-        , rings br
+        [ rings br
+        , introduction
         ]
 
 

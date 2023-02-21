@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import API.Bets
 import Activities
@@ -39,7 +39,7 @@ init flags url navKey =
             getApp url
 
         model =
-            Types.init flags.formId (Screen.size flags.width flags.height) navKey
+            Types.init flags.formId (Screen.size flags.width flags.height) navKey flags.token
     in
     ( { model | app = app }
     , Cmd.batch [ cmd, Task.perform FoundTimeZone Time.here ]
@@ -464,15 +464,15 @@ update msg model =
 
         FetchedToken token ->
             let
-                newCredentials =
+                ( newCredentials, cmd ) =
                     case token of
-                        Success _ ->
-                            Empty
+                        Success (Token t) ->
+                            ( Empty, storeToken t )
 
                         _ ->
-                            model.credentials
+                            ( model.credentials, Cmd.none )
             in
-            ( { model | token = token, credentials = newCredentials }, Cmd.none )
+            ( { model | token = token, credentials = newCredentials }, cmd )
 
         Authenticate ->
             case model.credentials of
@@ -481,6 +481,9 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+        Logout ->
+            ( { model | token = NotAsked }, removeToken () )
 
         -- Bets
         FetchBets ->
@@ -749,3 +752,9 @@ update msg model =
                     API.Bets.fetchBet uuid
             in
             ( model, cmd )
+
+
+port storeToken : String -> Cmd msg
+
+
+port removeToken : () -> Cmd msg

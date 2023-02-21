@@ -2,13 +2,14 @@ module Bets.Types.Answers exposing
     ( cleanThirds
     , decode
     , encode
+    , points
     , setQualifier
     , setScore
     , setTopscorer
     , setWinner
     )
 
-import Bets.Types exposing (Answers, Group, MatchID, Qualifier, Score, Slot, Topscorer, Winner)
+import Bets.Types exposing (Answer(..), Answers, Group, MatchID, Points, Qualifier, Score, Slot, Topscorer, Winner)
 import Bets.Types.Answer.Bracket as Br
 import Bets.Types.Answer.GroupMatches as Gm
 import Bets.Types.Answer.Topscorer as Ts
@@ -44,6 +45,11 @@ cleanThirds answers grp =
 setScore : Answers -> MatchID -> Score -> Answers
 setScore answers matchID score =
     { answers | matches = Gm.setScore answers.matches matchID score }
+
+
+points : Answer a -> Points
+points (Answer _ pts) =
+    pts
 
 
 encode : Answers -> Json.Encode.Value

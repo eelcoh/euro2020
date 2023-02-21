@@ -195,7 +195,7 @@ viewTopscorer ( hasQualified, topscorer ) =
     Element.row
         [ spacing 20, padding 10, onClick msg ]
         [ teamBadge
-        , Element.text name
+        , UI.Button.pill semantics msg name
         ]
 
 

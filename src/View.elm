@@ -43,6 +43,9 @@ view model =
                         Login ->
                             Authentication.view model
 
+                        Logoff ->
+                            Authentication.view model
+
                         Bets ->
                             Results.Bets.view model
 
@@ -107,6 +110,9 @@ view model =
                         TSResults ->
                             ( "#topscorers", "topscorer" )
 
+                        Logoff ->
+                            ( "#logout", "logout" )
+
                         _ ->
                             ( "#home", "home" )
             in
@@ -116,7 +122,7 @@ view model =
         linkList =
             case model.token of
                 RemoteData.Success (Token _) ->
-                    [ Home, Ranking, Results, KOResults, TSResults, Blog, Bets ]
+                    [ Home, Ranking, Results, KOResults, TSResults, Blog, Bets, Logoff ]
 
                 _ ->
                     [ Home, Ranking, Results ]
@@ -194,11 +200,14 @@ getApp url =
                 "knockouts" :: [] ->
                     ( KOResults, RefreshKnockoutsResults )
 
-                "topscorer" :: [] ->
+                "topscorers" :: [] ->
                     ( TSResults, RefreshTopscorerResults )
 
                 "login" :: _ ->
                     ( Login, NoOp )
+
+                "logout" :: _ ->
+                    ( Login, Logout )
 
                 _ ->
                     ( Home, RefreshActivities )
